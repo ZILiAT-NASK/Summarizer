@@ -6,7 +6,7 @@ import nltk
 import numpy as np
 import os
 import collections
-from .libs.common import get_logger, out_dir, txt_dir, nltk_data_dir, file_iterator, get_stopwords_file
+from .libs.common import get_logger, nltk_data_dir, get_stopwords_file
 from .summarizer_algorithm import SummarizerAlgorithm
 
 

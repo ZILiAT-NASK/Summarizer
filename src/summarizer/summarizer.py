@@ -5,8 +5,6 @@
 import morfeusz2
 import spacy
 
-from .frequent_lemmas_summarizer import FrequentLemmasSummarizer
-from .transformers_summarizer import TransformersSummarizer
 from .cohesion_sumamrizer import CohesionSummarizer
 from .preprocessing import preprocess
 from .libs.common import get_logger
@@ -38,9 +36,7 @@ class Summarizer:
         self.nlp.max_length = 3_000_000
 
         self.cohesion_alg = CohesionSummarizer(self.nlp, self.morf)
-        self.frequent_lemmas_alg = FrequentLemmasSummarizer(self.nlp, self.morf)
-        self.transformers_alg = TransformersSummarizer(self.nlp)
-        self.algorithms = {self.cohesion_alg, self.frequent_lemmas_alg, self.transformers_alg}
+        self.algorithms = {self.cohesion_alg}
 
     def get_names(self):
         """Cohesion
@@ -48,21 +44,12 @@ class Summarizer:
         Transformers"""
         return [alg.name for alg in self.algorithms]
 
-    def summarize(self, text, algorithm_str, limit, unit):
+    def summarize(self, text, limit, unit, algorithm_str='Cohesion'):
         """throws KeyError"""
         algorithm = {alg.name: alg for alg in self.algorithms}[algorithm_str]
         if unit not in ['words', 'chars']:
             raise KeyError("For 'unit' possible options are 'words' and 'chars'.")
         return self._process(text, algorithm, limit, unit)
-    #
-    # def frequent_lemmas(self, text, max_words=500):
-    #     return self._process(text, max_words, self.frequent_lemmas_alg)
-    #
-    # def transformer(self, text, max_words=500):
-    #     return self._process(text, max_words, self.transformers_alg)
-    #
-    # def cohesion(self, text, max_words=500):
-    #     return self._process(text, max_words, self.cohesion_alg)
 
     def _process(self, text, algorithm, limit, unit):
         out = {

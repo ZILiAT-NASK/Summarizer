@@ -12,14 +12,10 @@ Usage:
 from summarizer import Summarizer
 
 summarizer = Summarizer()
-
-alg_names = summarizer.get_names() # list: ["Cohesion", "Frequent Lemmas", "Transformers"]
-
 text = "..."
-alg_name = "Frequent Lemmas"
 limit = 300
 unit = "words" # "words" or "chars"
-out = summarizer.summarize(text, alg_name, limit, unit)  # dict or KeyError
+out = summarizer.summarize(text, limit, unit)  # dict or KeyError
 ```
 Alternatively use loaded model:
 ```python
@@ -34,8 +30,8 @@ Output dict:
 ```
 {
     'status': str 'correct' or 'failed',
-    'message': str or None,
-    'summary': str or None,
+    'message': str,
+    'summary': str,
     'event_id': int,
     'algorithm': str,
 }
