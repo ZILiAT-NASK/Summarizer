@@ -9,11 +9,11 @@ class SummarizerAlgorithm(ABC):
     name: str
     nlp = None
 
-    def __call__(self, text, limit, unit):
-        return self.summarize(text, limit, unit)
+    def __call__(self, text, limit, unit, type=None):
+        return self.summarize(text, limit, unit, type)
 
     @abstractmethod
-    def summarize(self, text, limit, unit):
+    def summarize(self, text, limit, unit, type=None):
         pass
 
     def rows(self, text):

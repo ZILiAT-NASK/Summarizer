@@ -6,8 +6,9 @@ import nltk
 import numpy as np
 import os
 import collections
-from .libs.common import get_logger, nltk_data_dir, get_stopwords_file
-from .summarizer_algorithm import SummarizerAlgorithm
+import coreferencer
+from libs.common import get_logger, nltk_data_dir, get_stopwords_file
+from summarizer_algorithm import SummarizerAlgorithm
 
 
 class CohesionSummarizer(SummarizerAlgorithm):
@@ -82,47 +83,83 @@ class CohesionSummarizer(SummarizerAlgorithm):
         )
         self.unwanted_pos = ['PRON', 'ADP', 'AUX', 'PUNCT', 'DET', 'ABR']
 
-    def summarize(self, text, limit, unit):
+    def summarize(self, text, limit, unit, alg_type):
         sep = ' '
         sep_len = 1 if unit == "chars" else 0
-
+        if alg_type == 'coreferences':
+            self.nlp.add_pipe('coreferencer')
         doc = self.nlp(text)
         words = [t for t in doc if t.is_alpha and t.lemma_ not in self.stop_words and t.pos_ not in self.unwanted_pos]
-        lemmas_counter = collections.Counter(t.lemma_ for t in words)
-        common_lemmas = lemmas_counter.most_common(self.threshold)
-        common_lemmas_keys = [k for k, v in common_lemmas]
-        n_common_types = [len(set(t.lemma_ for t in sent if t.lemma_ in common_lemmas_keys)) for sent in doc.sents]
+        # freq_words_counter = collections.Counter(t for t in words) # słowa w odmianie książka / książce
+        if alg_type == 'lemmas':
+            counter = collections.Counter(t.lemma_ for t in words)
+        if alg_type == 'words':
+            threshold = 0.9
+            similarity_finds = dict()
+            counter = collections.Counter(t.text for t in words)
+            for w1 in doc:
+                similarity_finds[w1.text] = 0
+                for w2 in doc:
+                    if w1 is not w2:
+                        similarity = w1.similarity(w2)
+                        if similarity > threshold:
+                            similarity_finds[w1.text] += counter[w2.text]
+            for w in similarity_finds:
+                counter[w] += similarity_finds[w]
+        if alg_type == 'coreferences':
+            counter = collections.Counter(t.lemma_ for t in words)
+            coref_clusters = doc._.coref.clusters
+            for w in counter:
+                cluster_count = 0
+                for cluster in coref_clusters:
+                    mention_flg = False
+                    for mention in cluster.mentions:
+                        mention_count = 0
+                        mention_lemmas = [t.lemma_ for t in mention.span]
+                        if w in mention_lemmas:
+                            mention_count += 1
+                        else:
+                            mention_flg = True
+                        if mention_flg:
+                            cluster_count += mention_count
+                counter[w] += cluster_count              
+        common = counter.most_common(self.threshold)
+        common_keys = [k for k, v in common]
 
-        def has_connector(sent):
-            return sent.text.startswith(self.connectors) or sent[0].pos_ == 'SCJON'
-        has_prefix = [has_connector(sent) for sent in doc.sents]
-        has_prefix[0] = False
-
-        def get_pieces():
-            data = list(zip(doc.sents, has_prefix, n_common_types))
-            while len(data) > 0:
-                priority_id = np.argmax(n for _, _, n in data)
-                sent, has_pr, _ = data.pop(int(priority_id))
-                piece = [sent]
-                while has_pr:
-                    priority_id = priority_id - 1
-                    sent, has_pr, _ = data.pop(priority_id)
-                    piece.append(sent)
-                yield piece
-
-        summary_sents = []
-        curr_len = 0
-        for frag in get_pieces():
-            frag_len = sum(self.calc_len(f, unit) for f in frag) + (len(frag) - 1) * sep_len
-            if curr_len + frag_len + sep_len <= limit:
-                summary_sents.extend(frag)
-                curr_len += frag_len + sep_len
+        sent_common_counter = list()
+        sent_with_connectors = list()
+        for i, sent in enumerate(doc.sents):
+            sent_common = 0
+            for key in common_keys:
+                if alg_type == 'words' and key in [w.text for w in sent]:
+                    sent_common += 1
+                elif alg_type in ['coreferences', 'lemmas'] and key in [w.lemma_ for w in sent]:
+                    sent_common += 1
+            if sent.text.lower().startswith(self.connectors) or sent[0].pos_ == 'SCJON' and i != 0:
+                sent_common_counter.append(-1)
+                sent_with_connectors.append('')
+                for j in range(i-1, -1, -1):
+                    if sent_common_counter[j] >= 0:
+                        sent_common_counter[j] = max(sent_common, sent_common_counter[j])
+                        sent_with_connectors[j] = ' '.join([sent_with_connectors[j], sent.text])
+                        break
+            else:
+                sent_common_counter.append(sent_common)
+                sent_with_connectors.append(sent.text)
+        _, sent_with_connectors = zip(*sorted(zip(sent_common_counter, sent_with_connectors), reverse=True))
+        out = ''
+        out_count = 0
+        for i, sent in enumerate(sent_with_connectors):
+            if unit == 'words':
+                sent_len = len(sent.split())
+            elif unit == 'chars':
+                sent_len = len(sent)
+            if out_count + sent_len <= limit:
+                out = ' '.join([out, sent])
+                out_count += sent_len
             else:
                 break
-
-        summary_sents.sort(key=lambda x: x[0].i)
-        summary = sep.join(s.text for s in summary_sents)
-        return summary
+        return out
 
     def load_stopwords(self):
         with open(get_stopwords_file(), "r", encoding="utf-8") as stop_words_l:

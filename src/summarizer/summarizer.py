@@ -2,12 +2,13 @@
 # FIND TERMS AND CONDITIONS IN LICENSE FILE:
 # github.com/ZILiAT-NASK/Summarizer/LICENSE
 
-import morfeusz2
 import spacy
+import morfeusz2
 
-from .cohesion_sumamrizer import CohesionSummarizer
-from .preprocessing import preprocess
-from .libs.common import get_logger
+
+from cohesion_sumamrizer import CohesionSummarizer
+from preprocessing import preprocess
+from libs.common import get_logger
 
 
 class Summarizer:
@@ -44,14 +45,14 @@ class Summarizer:
         Transformers"""
         return [alg.name for alg in self.algorithms]
 
-    def summarize(self, text, limit, unit, algorithm_str='Cohesion'):
+    def summarize(self, text, limit, unit, algorithm_str='Cohesion', alg_type='lemmas'):
         """throws KeyError"""
         algorithm = {alg.name: alg for alg in self.algorithms}[algorithm_str]
         if unit not in ['words', 'chars']:
             raise KeyError("For 'unit' possible options are 'words' and 'chars'.")
-        return self._process(text, algorithm, limit, unit)
+        return self._process(text, algorithm, limit, unit, alg_type)
 
-    def _process(self, text, algorithm, limit, unit):
+    def _process(self, text, algorithm, limit, unit, alg_type):
         out = {
             'status': 'correct',
             'summary': None,
@@ -65,15 +66,16 @@ class Summarizer:
             n_tokens = len(algorithm.word_tokenizer(text))
             if n_tokens <= 30:
                 raise TooShortInputError
-            if n_tokens <= limit:
-                raise MaxWordsTooLowError
+            # if n_tokens <= limit:
+            #     raise MaxWordsTooLowError
 
-            summary = algorithm(text, limit, unit)
+            summary = algorithm(text, limit, unit, alg_type)
             if len(summary) < 10:
                 raise EmptySummaryError
             out['summary'] = summary
         except (SummarizerError, AttributeError, ArithmeticError, NameError, TypeError, ValueError) as ex:
             out['status'] = 'failed'
+            raise ex
             if isinstance(ex, SummarizerError):
                 out['message'] = self.event_messages[ex.event_id]
                 out['event_id'] = ex.event_id
@@ -86,7 +88,6 @@ class Summarizer:
             else:
                 out['summary'] = '[Nie utworzono podsumowania]'
             self.logger.debug(f"Failed at {algorithm.name} algorithm", exc_info=True)
-            print(ex)
         return out
 
 
