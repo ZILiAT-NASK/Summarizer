@@ -3,9 +3,6 @@
 # github.com/ZILiAT-NASK/Summarizer/LICENSE
 
 import spacy
-import morfeusz2
-
-
 from cohesion_sumamrizer import CohesionSummarizer
 from preprocessing import preprocess
 from libs.common import get_logger
@@ -27,7 +24,6 @@ class Summarizer:
         self.preprocess = preprocess
         self.min_words = min_words
 
-        self.morf = morfeusz2.Morfeusz()
         if nlp_model is None:
             self.logger.info("Loading model...")
             self.nlp = spacy.load('pl_nask')
@@ -36,7 +32,7 @@ class Summarizer:
             self.nlp = nlp_model
         self.nlp.max_length = 3_000_000
 
-        self.cohesion_alg = CohesionSummarizer(self.nlp, self.morf)
+        self.cohesion_alg = CohesionSummarizer(self.nlp)
         self.algorithms = {self.cohesion_alg}
 
     def get_names(self):

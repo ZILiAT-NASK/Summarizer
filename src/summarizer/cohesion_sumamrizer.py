@@ -9,15 +9,15 @@ import collections
 import coreferencer
 from libs.common import get_logger, nltk_data_dir, get_stopwords_file
 from summarizer_algorithm import SummarizerAlgorithm
+import re
 
 
 class CohesionSummarizer(SummarizerAlgorithm):
     name = "Cohesion"
 
-    def __init__(self, nlp, morf):
+    def __init__(self, nlp):
         self.logger = get_logger('summarizer_coh', __name__, overwrite=False)
         self.nlp = nlp
-        self.morf = morf
         nltk.data.path.append(nltk_data_dir)
         if not os.path.exists(os.path.join(nltk_data_dir, 'tokenizers/punkt.zip')):
             nltk.download('punkt', download_dir=nltk_data_dir)
@@ -135,7 +135,9 @@ class CohesionSummarizer(SummarizerAlgorithm):
                     sent_common += 1
                 elif alg_type in ['coreferences', 'lemmas'] and key in [w.lemma_ for w in sent]:
                     sent_common += 1
-            if sent.text.lower().startswith(self.connectors) or sent[0].pos_ == 'SCJON' and i != 0:
+
+            if sent.text.lower()[0] in self.connectors or sent[0].pos_ == 'SCJON' and i != 0:
+                # TODO: sent[0] jest czasami nawiasem (1) albo 1.
                 sent_common_counter.append(-1)
                 sent_with_connectors.append('')
                 for j in range(i-1, -1, -1):
@@ -147,6 +149,7 @@ class CohesionSummarizer(SummarizerAlgorithm):
                 sent_common_counter.append(sent_common)
                 sent_with_connectors.append(sent.text)
         _, sent_with_connectors = zip(*sorted(zip(sent_common_counter, sent_with_connectors), reverse=True))
+
         out = ''
         out_count = 0
         for i, sent in enumerate(sent_with_connectors):
@@ -158,7 +161,7 @@ class CohesionSummarizer(SummarizerAlgorithm):
                 out = ' '.join([out, sent])
                 out_count += sent_len
             else:
-                break
+                continue
         return out
 
     def load_stopwords(self):

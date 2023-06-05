@@ -28,9 +28,10 @@ Należy jednak odnotować, że stosownie do art. 26 § 1 ustawy o postępowaniu 
 W konsekwencji, stosownie do dyspozycji ww.
 przepisu, wydaję się, że tytuł wykonawczy powinien zostać wystawiony przez Wojewodę Śląskiego.'''
 
+
 # print(len(dane))
-print(sum.summarize(dane, 1500, 'chars', alg_type='lemmas')['summary'])
+print(sum.summarize(dane, 200, 'words', alg_type='lemmas')['summary'])
 print('-----------------')
-print(sum.summarize(dane, 1500, 'chars', alg_type='words')['summary'])
+print(sum.summarize(dane, 200, 'words', alg_type='words')['summary'])
 print('-----------------')
-print(sum.summarize(dane, 1500, 'chars', alg_type='coreferences')['summary'])
+print(sum.summarize(dane, 200, 'words', alg_type='coreferences')['summary'])
